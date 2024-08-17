@@ -1,0 +1,43 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "sqlserver.fullname" . }}
+  labels:
+    {{- include "sqlserver.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app: {{ include "sqlserver.name" . }}
+  template:
+    metadata:
+      labels:
+        app: {{ include "sqlserver.name" . }}
+    spec:
+      containers:
+      - name: sqlserver
+        image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        ports:
+        - containerPort: 1433
+        env:
+        - name: MSSQL_PID
+          value: "{{ .Values.env.MSSQL_PID }}"
+        - name: ACCEPT_EULA
+          value: "{{ .Values.env.ACCEPT_EULA }}"
+        - name: SA_PASSWORD
+          value: "{{ .Values.env.SA_PASSWORD }}"
+        volumeMounts:
+        - name: mssql-data
+          mountPath: /var/opt/mssql
+        resources:
+          requests:
+            memory: {{ .Values.resources.requests.memory }}
+            cpu: {{ .Values.resources.requests.cpu }}
+          limits:
+            memory: {{ .Values.resources.limits.memory }}
+            cpu: {{ .Values.resources.limits.cpu }}
+      volumes:
+      - name: mssql-data
+        persistentVolumeClaim:
+          claimName: {{ include "sqlserver.fullname" . }}
