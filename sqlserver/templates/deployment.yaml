@@ -15,7 +15,7 @@ spec:
         app: {{ include "sqlserver.name" . }}
     spec:
       containers:
-      - name: sqlserver
+      - name: sqlserver      
         image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
         imagePullPolicy: {{ .Values.image.pullPolicy }}
         ports:
@@ -37,6 +37,27 @@ spec:
           limits:
             memory: {{ .Values.resources.limits.memory }}
             cpu: {{ .Values.resources.limits.cpu }}
+      initContainers:
+      - name: init-create-db
+        image: mcr.microsoft.com/mssql-tools
+        command: 
+          - /bin/sh
+          - -c
+          - |
+            # Debugging: Print environment variables and the hostname
+            echo "SA_PASSWORD: S3cur3P@ssW0rd!"
+            echo "Attempting to connect to SQL Server at sqlserver-sql-server"
+            hostname
+            echo "Starting database initialization"
+
+            # Wait for SQL Server to be available
+            until /opt/mssql-tools/bin/sqlcmd -S sqlserver-sql-server -U sa -P S3cur3P@ssW0rd! -t 60 -Q "SELECT state_desc FROM sys.dm_server_services WHERE servicename = 'MSSQLSERVER' AND status_desc = 'Running';" | grep -q "Running"; do
+              echo "Waiting for SQL Server to start..."
+              sleep 20
+            done
+            echo "SQL Server started, creating database..."
+            # Create the database
+            /opt/mssql-tools/bin/sqlcmd -S sqlserver-sql-server -U sa -P S3cur3P@ssW0rd! -t 60 -Q "CREATE DATABASE myDatabase1"
       volumes:
       - name: mssql-data
         persistentVolumeClaim:
